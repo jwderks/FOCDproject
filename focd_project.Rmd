@@ -16,6 +16,7 @@ library(stargazer)
 anes <- read_excel("ANES_2.xlsx") #ANES
 anes_nov3 <- read_excel("ANES_geoNov3.xlsx") #Google Trends
 kff <- read_excel("KFF_Vars3.xlsx") #Kaiser Family Foundation
+#Data from Ballotpedia for the mask mandate indicator was manually added to the kff data.
 ```
 
 ```{r}
