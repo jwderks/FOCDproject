@@ -1,0 +1,205 @@
+---
+title: "focd_analysis"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(haven)
+library(readxl)
+library(ggplot2)
+```
+
+```{r}
+anes <- read_excel("ANES_2.xlsx") #ANES
+anes_nov3 <- read_excel("ANES_geoNov3.xlsx") #Google Trends
+anes_oct1 <- read_excel("ANES_geoOct1.xlsx") #Google Trends
+kff <- read_excel("KFF_Vars3.xlsx") #Kaiser Family Foundation
+```
+
+```{r}
+anes1 <- anes %>% group_by(statename) %>% 
+  summarise(mean(V202329), 
+  mean(V202330), 
+  mean(V202331x), 
+  mean(V202381), 
+  mean(V202382))
+```
+
+```{r}
+anes_j_nov3 <- left_join(anes1, anes_nov3, by = "statename")
+anes_j_oct1 <- left_join(anes1, anes_oct1, by = "statename")
+```
+
+```{r}
+full_nov3 <- left_join(anes_j_nov3, kff, by = "statename")
+full_oct1 <- left_join(anes_j_oct1, kff, by = "statename")
+```
+
+```{r}
+#full_nov3$norm_bg[full_nov3$norm_bg == 0] = NA
+#full_nov3$norm_5g[full_nov3$norm_5g == 0] = NA
+#full_nov3$norm_ch[full_nov3$norm_ch == 0] = NA
+```
+
+```{r}
+min_max_norm <- function(x) {
+    (x - min(x)) / (max(x) - min(x))
+}
+
+full_nov3_norm <- as.data.frame(lapply(full_nov3[2:15], min_max_norm))
+full_nov3_norm$statename <- full_nov3$statename
+full_nov3_norm$govparty <- full_nov3$govparty
+full_nov3_norm$mask_oct_19_2020 <- full_nov3$mask_oct_19_2020
+
+full_nov3_norm <- full_nov3_norm %>% 
+  mutate(full_nov3_norm, repgov = ifelse(govparty == 'Republican', 1, 0))
+full_nov3_norm <- full_nov3_norm[-c(51),]
+```
+
+
+Model 1 with norm_bg: not significant
+```{r}
+model1_bg = lm(`mean(V202331x)` ~ norm_bg + casepermil + deathpermil + pop + govparty, data = full_nov3)
+summary(model1_bg)
+
+
+model1_bg = lm(mean.V202331x. ~ norm_bg + casepermil + deathpermil + pop + repgov, data = full_nov3_norm)
+summary(model1_bg)
+```
+
+Model 1 with norm_5g: not significant
+```{r}
+######Present this first
+model1_5g = lm(`mean(V202331x)` ~ norm_5g + casepermil + deathpermil + pop + govparty, data = full_nov3)
+summary(model1_5g)
+
+model1_5g = lm(mean.V202331x. ~ norm_5g + casepermil + deathpermil + pop + repgov, data = full_nov3_norm)
+summary(model1_5g)
+```
+
+Model 1 with norm_ch: not significant
+```{r}
+model1_ch= lm(`mean(V202331x)` ~ norm_ch + casepermil + deathpermil + pop + govparty, data = full_nov3)
+summary(model1_ch)
+
+
+model1_ch= lm(mean.V202331x. ~ norm_ch + casepermil + deathpermil + pop + repgov, data = full_nov3_norm)
+summary(model1_ch)
+```
+
+Model 1 with aggregate: not significant
+```{r}
+full_nov3$norm_agg <- full_nov3$norm_bg + full_nov3$norm_5g + full_nov3$norm_ch
+model1_agg= lm(`mean(V202331x)` ~ norm_agg + casepermil + deathpermil + pop + govparty, data = full_nov3)
+summary(model1_agg)
+
+
+full_nov3_norm$norm_agg <- full_nov3_norm$norm_bg + full_nov3_norm$norm_5g + full_nov3_norm$norm_ch
+model1_agg= lm(mean.V202331x. ~ norm_agg + casepermil + deathpermil + pop + repgov, data = full_nov3_norm)
+summary(model1_agg)
+```
+
+Moderation Model with norm_bg: No moderation effect
+```{r}
+full_nov3$int_bg <- full_nov3$mask_oct_19_2020*full_nov3$norm_bg
+model2_bg = lm(`mean(V202331x)` ~ norm_bg + int_bg + mask_oct_19_2020 + casepermil + deathpermil + pop + govparty, data = full_nov3)
+summary(model2_bg)
+
+
+full_nov3_norm$int_bg <- full_nov3_norm$mask_oct_19_2020*full_nov3_norm$norm_bg
+model2_bg = lm(mean.V202331x. ~ norm_bg + int_bg + mask_oct_19_2020 + casepermil + deathpermil + pop + repgov, data = full_nov3_norm)
+summary(model2_bg)
+```
+
+Moderation Model with norm_5g: Moderation effect
+```{r}
+####This is the one too
+full_nov3$int_5g <- full_nov3$mask_oct_19_2020*full_nov3$norm_5g
+model2_5g = lm(`mean(V202331x)` ~ norm_5g + int_5g + mask_oct_19_2020 + casepermil + deathpermil + pop + govparty, data = full_nov3)
+summary(model2_5g)
+
+
+full_nov3_norm$int_5g <- full_nov3_norm$mask_oct_19_2020*full_nov3_norm$norm_5g
+model2_5g = lm(mean.V202331x. ~ norm_5g + int_5g + mask_oct_19_2020 + casepermil + deathpermil + pop + repgov, data = full_nov3_norm)
+summary(model2_5g)
+```
+
+Moderation Model with norm_ch: No moderation effect
+```{r}
+full_nov3$int_ch <- full_nov3$mask_oct_19_2020*full_nov3$norm_ch
+model2_ch= lm(`mean(V202331x)` ~ norm_ch + int_ch + mask_oct_19_2020 + casepermil + deathpermil + pop + govparty, data = full_nov3)
+summary(model2_ch)
+
+
+full_nov3_norm$int_ch <- full_nov3_norm$mask_oct_19_2020*full_nov3_norm$norm_ch
+model2_ch= lm(mean.V202331x. ~ norm_ch + int_ch + mask_oct_19_2020 + casepermil + deathpermil + pop + repgov, data = full_nov3_norm)
+summary(model2_ch)
+```
+
+Moderation Model with norm_agg: No moderation effect
+```{r}
+full_nov3$int_agg <- full_nov3$mask_oct_19_2020*full_nov3$norm_agg
+model2_agg= lm(`mean(V202331x)` ~ norm_agg + int_agg + mask_oct_19_2020 + casepermil + deathpermil + pop + govparty, data = full_nov3)
+summary(model2_agg)
+
+
+full_nov3_norm$int_agg <- full_nov3_norm$mask_oct_19_2020*full_nov3_norm$norm_agg
+model2_agg= lm(mean.V202331x. ~ norm_agg + int_agg + mask_oct_19_2020 + casepermil + deathpermil + pop + repgov, data = full_nov3_norm)
+summary(model2_agg)
+```
+Moderation Plot with norm_5g:
+```{r}
+library(ggthemes)
+ns5g_old <- ggplot(full_nov3, aes(x = norm_5g, y = `mean(V202331x)`)) + geom_point() + 
+  geom_smooth(method='lm') + labs(x = "5G Conspiracy Google Trends") + labs(y = "Vaccine Hesitancy")
+ns5g_old
+
+s5g_old <- ggplot(full_nov3, aes(x = norm_5g, y = `mean(V202331x)`, colour = as.factor(mask_oct_19_2020))) + geom_point() + 
+  geom_smooth(method='lm', aes(group = mask_oct_19_2020), se = FALSE)+ labs(x = "5G Conspiracy Google Trends") + labs(y = "Vaccine Hesitancy") + labs(colour = "Mask Mandate")
+s5g_old
+
+
+
+
+
+ns5g <- ggplot(full_nov3_norm, aes(x = norm_5g, y = mean.V202331x.)) + geom_point() + 
+  geom_smooth(method='lm') + xlab("5G Conspiracy Google Trends") + ylab("Vaccine Hesitancy") + theme_light(base_size = 13)
+ns5g
+
+s5g <- ggplot(full_nov3_norm, aes(x = norm_5g, y = mean.V202331x., colour = as.factor(mask_oct_19_2020))) + geom_point() + 
+  geom_smooth(method='lm', aes(group = mask_oct_19_2020), se = FALSE) + labs(x = "5G Conspiracy Google Trends") + labs(y = "Vaccine Hesitancy") + labs(colour = "Mask Mandate") + theme_economist(base_size = 13)
+s5g
+
+```
+
+Moderation Plot with norm_agg:
+```{r}
+ggplot(full_nov3, aes(x = norm_agg, y = `mean(V202331x)`, colour = mask_oct_19_2020)) + geom_point() + 
+  geom_smooth(method='lm', aes(group = mask_oct_19_2020), se = FALSE)
+
+
+ggplot(full_nov3_norm, aes(x = norm_agg, y = mean.V202331x., colour = as.factor(mask_oct_19_2020))) + geom_point() + 
+  geom_smooth(method='lm', aes(group = mask_oct_19_2020), se = FALSE)
+```
+Stargazer plot for presentation
+```{r}
+library(stargazer)
+stargazer(model1_5g, model2_5g, align=TRUE, 
+          title="Effect of 5G Conspiracy Belief", data=full_nov3_norm,
+          type="latex", style="ajps", out="focd_1.html", 
+          dep.var.labels = "Vaccine Hesitancy",
+          omit.stat = c("res.dev", "f", "adj.rsq"),
+          covariate.labels=c("5G Conspiracy", "5G * Mask Mandate", "Mask Mandate", 
+                             "Cases per mil.", "Deaths per mil.", "Population",
+                             "Republican Governor"))
+
+stargazer(model1_agg, model2_agg, align=TRUE, 
+          title="Effect of Aggregate Conspiracy Belief", data=full_nov3_norm,
+          type="latex", style="ajps", out="focd_agg.html", 
+          dep.var.labels = "Vaccine Hesitancy",
+          omit.stat = c("res.dev", "f", "adj.rsq"),
+          covariate.labels=c("Aggregate Conspiracy", "Agg. Conspiracy * Mask Mandate", "Mask Mandate", "Cases per mil.", "Deaths per mil.", "Population",
+                             "Republican Governor"))
+```
+
