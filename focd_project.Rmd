@@ -132,7 +132,7 @@ mod_agg_plot
 
 
 
-Stargazer plots for presentation
+Stargazer Tables
 ```{r}
 #5g Models
 stargazer(model1_5g, model2_5g, align=TRUE, 
